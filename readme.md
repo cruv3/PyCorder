@@ -1,4 +1,4 @@
-# PyCorder — Smart Macro Recorder & Player
+# PyCorder
 
 ![Screenshot](assets/pycorder.png)
 
