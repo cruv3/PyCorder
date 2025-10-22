@@ -2,7 +2,7 @@
 
 ![Screenshot](assets/pycorder.png)
 
-**PyCorder** is a modern Python-based automation tool that lets you **record, edit, and replay** user interactions such as clicks, drags, and keyboard inputs.
+**PyCorder** is a Python-based automation tool that lets you **record, edit, and replay** user interactions such as clicks, drags, and keyboard inputs.
 
 ---
 
