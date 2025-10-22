@@ -1,0 +1,73 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Virtual Environments ---
+venv/
+.env/
+.venv/
+env/
+ENV/
+
+# --- Build / Distribution ---
+build/
+dist/
+AppDir/
+*.spec
+*.egg-info/
+*.egg
+*.manifest
+*.log
+
+# --- Output binaries ---
+*.AppImage
+*.exe
+*.dll
+*.so
+*.dylib
+*.pyd
+
+# --- Installer scripts ---
+build_appimage.sh.log
+appimage-build.log
+
+# --- IDE / Editor ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*.bak
+
+# --- System Files ---
+.DS_Store
+Thumbs.db
+
+# --- PyInstaller Cache ---
+.cache/
+.pyinstaller/
+__pycache__/
+
+# --- Testing / Coverage ---
+.pytest_cache/
+.mypy_cache/
+__pypackages__/
+coverage.xml
+htmlcov/
+
+# --- Temporary / Generated Files ---
+*.tmp
+*.temp
+*.bak
+*.old
+*.log
+*.pid
+
+# --- Misc ---
+*.tar
+*.zip
+*.gz
+*.7z
+*.tgz
+*.tar.gz
+
