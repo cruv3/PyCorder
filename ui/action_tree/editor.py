@@ -36,11 +36,11 @@ class ActionTreeEditor(QWidget):
         layout.addWidget(self.tree)
 
         self.model = QStandardItemModel(0, 5, self)
-        self.model.setHorizontalHeaderLabels(["#", "Type / Group", "Time (s)", "Details", "Comment"])
+        self.model.setHorizontalHeaderLabels(["#", "Type / Group", "Duration (s)", "Details", "Comment"])
         self.tree.setModel(self.model)
         self.tree.setColumnWidth(COL_IDX, 100)
         self.tree.setColumnWidth(COL_TYPE, 180)
-        self.tree.setColumnWidth(COL_TIME, 100)
+        self.tree.setColumnWidth(COL_TIME, 110)
         self.tree.setColumnWidth(COL_DETAILS, 300)
 
         self.overlay = Overlay()
@@ -244,7 +244,7 @@ class ActionTreeEditor(QWidget):
         elif t == "key":
             return f"key={act.get('key', '?')}"
         else:
-            hide = {"id", "type", "time", "duration", "screen", "comment"}
+            hide = {"id", "type", "duration", "screen", "comment"}
             return ", ".join(f"{k}={v}" for k, v in act.items() if k not in hide)
 
     def _parse_click_details(self, text: str) -> dict:
@@ -311,7 +311,7 @@ class ActionTreeEditor(QWidget):
 
             elif col == COL_TIME:
                 try:
-                    act["time"] = float(item.text().strip())
+                    act["duration"] = float(item.text().strip()) 
                 except ValueError:
                     pass
 

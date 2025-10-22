@@ -15,18 +15,17 @@ class Recorder:
         self.actions = []
         self.screen_fetcher = ScreenFetcher()
 
-        # internal state
         self._last_move_time = None
         self._move_buffer = None
-        self._pause_threshold = 0.3  # seconds of inactivity = end of motion block
+        self._pause_threshold = 0.3
         self._stop_event = Event()
+        self._move_tolerance = 3
+        self._key_press_times = {}
 
         # listeners
         self.mouse_listener = None
         self.keyboard_listener = None
         self.flush_thread = None
-
-        self._move_tolerance = 3
 
     # =====================================================
     # Recording control
@@ -50,7 +49,8 @@ class Recorder:
 
         # keyboard listener
         self.keyboard_listener = keyboard.Listener(
-            on_press=self._on_key_press
+            on_press=self._on_key_press,
+            on_release=self._on_key_release
         )
         self.keyboard_listener.start()
 
@@ -66,7 +66,6 @@ class Recorder:
         self.is_recording = False
         self._stop_event.set()
 
-        # Stop listeners
         for listener in (self.mouse_listener, self.keyboard_listener):
             try:
                 if listener:
@@ -74,7 +73,6 @@ class Recorder:
             except Exception:
                 pass
 
-        # Join threads
         for listener in (self.mouse_listener, self.keyboard_listener):
             try:
                 if listener and getattr(listener, "_thread", None):
@@ -89,7 +87,6 @@ class Recorder:
             self.flush_thread.join(timeout=0.5)
         self.flush_thread = None
 
-        # Flush remaining move block
         self._move_buffer = None
         self._flush_move()
         self._is_dragging = False
@@ -98,9 +95,11 @@ class Recorder:
         return self.actions
 
     def _emit(self, act: dict):
-        """Central emit method (appends + updates last time)."""
+        """Central emit method (appends + forwards)."""
+        # Ensure every action has a duration
+        if "duration" not in act:
+            act["duration"] = 0.0
         self.actions.append(act)
-        self._last_emit_time = time.time()
         if self.on_action:
             self.on_action(act)
 
@@ -114,13 +113,12 @@ class Recorder:
         now = time.time()
         screen_name = self.screen_fetcher.get_name(x, y)
 
-        # if a drag is active, continue adding points
+        # handle drag in progress
         if getattr(self, "_is_dragging", False):
             self._drag_path.append((x, y))
             self._last_move_time = now
             return
 
-        # normal mouse move
         if not self._move_buffer:
             self._move_buffer = {
                 "type": "move",
@@ -151,20 +149,18 @@ class Recorder:
             return
 
         now = time.time()
-
+        dur = round(now - self._move_buffer["time_start"], 3)
         act = {
             "id": str(uuid.uuid4()),
             "type": "move",
             "path": self._move_buffer["path"],
-            "duration": round(now - self._move_buffer["time_start"], 3),
-            "time": now,
+            "duration": dur,
             "screen": self._move_buffer["screen"]
         }
         self._emit(act)
         self._move_buffer = None
 
     def _auto_flush(self):
-        """Flush buffered moves when idle for too long."""
         while not self._stop_event.is_set():
             time.sleep(0.1)
             if self._move_buffer and self._last_move_time:
@@ -172,7 +168,7 @@ class Recorder:
                     self._flush_move()
 
     # =====================================================
-    # Clicks and drag recording
+    # Clicks and drags
     # =====================================================
     def _on_click(self, x, y, button, pressed):
         if not self.is_recording:
@@ -191,20 +187,18 @@ class Recorder:
             self._drag_time_start = now
         else:
             if getattr(self, "_is_dragging", False):
-                dur = now - self._drag_time_start
+                dur = round(now - self._drag_time_start, 3)
                 dx, dy = self._drag_start
                 ex, ey = x, y
 
-                # Emit wait before new action
-
+                # drag or click
                 if len(self._drag_path) > 1 and (abs(dx - ex) > 2 or abs(dy - ey) > 2):
                     act = {
                         "id": str(uuid.uuid4()),
                         "type": "drag",
                         "button": self._drag_button,
                         "path": self._drag_path,
-                        "duration": round(dur, 3),
-                        "time": now,
+                        "duration": dur,
                         "screen": self._drag_screen
                     }
                 else:
@@ -214,11 +208,9 @@ class Recorder:
                         "button": self._drag_button,
                         "x": x,
                         "y": y,
-                        "duration": round(dur, 3),
-                        "time": now,
+                        "duration": dur,
                         "screen": self._drag_screen
                     }
-
                 self._emit(act)
 
             self._is_dragging = False
@@ -232,27 +224,47 @@ class Recorder:
             return
 
         try:
-            name = None
-            if hasattr(key, "char") and key.char:
-                name = key.char.lower()
-            elif hasattr(key, "name"):
-                name = key.name.lower()
-            else:
-                name = str(key).replace("Key.", "").lower()
-
+            name = self._normalize_key(key)
             if name in self.ignore_keys:
                 return
 
-            self._flush_move()
-            now = time.time()
+            # Wenn Taste schon gedrückt, ignorieren (repeats)
+            if name not in self._key_press_times:
+                self._key_press_times[name] = time.perf_counter()
+        except Exception as e:
+            print(f"[WARN] key press parse error: {e}")
+
+    def _on_key_release(self, key):
+        if not self.is_recording:
+            return
+
+        try:
+            name = self._normalize_key(key)
+            if name in self.ignore_keys:
+                return
+
+            press_time = self._key_press_times.pop(name, None)
+            if press_time:
+                dur = round(time.perf_counter() - press_time, 3)
+            else:
+                dur = 0.0
 
             act = {
                 "id": str(uuid.uuid4()),
                 "type": "key",
                 "key": name,
-                "time": now
+                "duration": dur
             }
             self._emit(act)
 
         except Exception as e:
-            print(f"[WARN] key parse error: {e}")
+            print(f"[WARN] key release parse error: {e}")
+
+    def _normalize_key(self, key):
+        """Convert pynput key to string."""
+        if hasattr(key, "char") and key.char:
+            return key.char.lower()
+        elif hasattr(key, "name"):
+            return key.name.lower()
+        else:
+            return str(key).replace("Key.", "").lower()

@@ -19,6 +19,7 @@ AppDir/
 *.egg
 *.manifest
 *.log
+app/
 
 # --- Output binaries ---
 *.AppImage

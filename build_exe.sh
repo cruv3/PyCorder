@@ -9,6 +9,7 @@ PYTHON_INSTALLER="python-3.10.9-amd64.exe"
 PYTHON_URL="https://www.python.org/ftp/python/3.10.9/${PYTHON_INSTALLER}"
 WINEPREFIX="$HOME/.wine"
 WINEARCH=win64
+OUTPUT_DIR="app"
 
 echo "=== 🏁 Building $APP_NAME for Windows via Wine ==="
 
@@ -59,27 +60,26 @@ fi
 
 # --- Build the EXE ---
 echo "🚀 Running PyInstaller..."
-# Use --onefile to embed DLLs and runtime properly
-eval wine python -m PyInstaller --noconfirm --clean --windowed \
+eval wine python -m PyInstaller --noconfirm --clean --windowed --onefile \
+  --distpath "$OUTPUT_DIR" \
   --name "$APP_NAME" "$ENTRY_POINT" $ICON_ARG
 
-# --- Verify DLL embedding ---
-DLL_CHECK=$(wine cmd /c "dir dist\\$APP_NAME.exe" 2>/dev/null || true)
-if [[ ! "$DLL_CHECK" =~ ".exe" ]]; then
-    echo "❌ Build failed — EXE not created."
+# --- Verify build result ---
+if [ ! -f "$OUTPUT_DIR/$APP_NAME.exe" ]; then
+    echo "❌ Build failed — EXE not found in $OUTPUT_DIR"
     exit 1
 fi
 
-# --- Copy python310.dll if needed ---
-DLL_PATH=$(find "$WINEPREFIX/drive_c/users" -name "python310.dll" | head -n 1 || true)
-if [ -n "$DLL_PATH" ]; then
-    echo "🔧 Ensuring python310.dll is included..."
-    cp "$DLL_PATH" dist/ 2>/dev/null || true
-else
-    echo "⚠️  Could not locate python310.dll (may not be needed for onefile build)."
-fi
+# --- Clean temp ---
+rm -rf "$WINEPREFIX/drive_c/users"/*/Temp/* 2>/dev/null || true
+
+# --- Cleanup build artifacts ---
+echo "🧹 Cleaning up intermediate files..."
+rm -rf build dist AppDir *.spec 2>/dev/null || true
 
 # --- Done ---
-echo "✅ Build complete!"
-echo "EXE created at: dist/$APP_NAME.exe"
 echo ""
+echo "✅ Build complete!"
+echo "EXE created at: $(pwd)/$OUTPUT_DIR/$APP_NAME.exe"
+echo ""
+ls -lh "$OUTPUT_DIR"

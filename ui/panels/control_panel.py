@@ -23,7 +23,7 @@ class ControlPanel(QWidget):
         # === Speed Control ===
         layout.addWidget(QLabel("Speed:"))
         self.speed_box = QDoubleSpinBox()
-        self.speed_box.setRange(0.1, 10.0)
+        self.speed_box.setRange(0.1, 100.0)
         self.speed_box.setValue(1.0)
         self.speed_box.setSingleStep(0.1)
         self.speed_box.setFixedWidth(80)

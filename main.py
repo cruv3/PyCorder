@@ -4,7 +4,7 @@ from PyQt5.QtGui import QCursor
 from ui.main_window import MainWindow
 
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 
 def run():
     app = QApplication(sys.argv)

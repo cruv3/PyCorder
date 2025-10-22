@@ -3,10 +3,13 @@ set -e
 
 APP_NAME="PyCorder"
 ENTRY_POINT="main.py"
-ICON_PATH="assets/icon-1.png"
+ICON_PATH="assets/icon.png"
 PYTHON_VERSION="python3"
+LOCAL_OUTPUT_DIR="app"
+INSTALL_DIR="/opt/$APP_NAME"
+DESKTOP_FILE="/usr/share/applications/$APP_NAME.desktop"
 
-echo "=== 🔧 Building $APP_NAME AppImage ==="
+echo "=== 🔧 Building and Installing $APP_NAME AppImage ==="
 
 # --- Check dependencies ---
 for cmd in pyinstaller appimagetool patchelf; do
@@ -18,7 +21,9 @@ for cmd in pyinstaller appimagetool patchelf; do
 done
 
 # --- Clean up old builds ---
+echo "🧹 Cleaning old build artifacts..."
 rm -rf dist build AppDir "$APP_NAME".AppImage *.spec 2>/dev/null || true
+sudo rm -f "$DESKTOP_FILE" "/usr/local/bin/$APP_NAME" 2>/dev/null || true
 
 # --- Install Python deps if needed ---
 if [ -f "requirements.txt" ]; then
@@ -26,10 +31,11 @@ if [ -f "requirements.txt" ]; then
     pip install --user -r requirements.txt
 fi
 
-# --- Build binary with PyInstaller ---
+# --- Build binary with PyInstaller (with icon) ---
 echo "🚀 Running PyInstaller..."
 pyinstaller --noconfirm --clean --windowed \
   --name "$APP_NAME" "$ENTRY_POINT" \
+  --icon "$ICON_PATH" \
   --add-data "assets:assets"
 
 # --- Create AppDir structure ---
@@ -50,7 +56,7 @@ exec "\$HERE/usr/bin/$APP_NAME" "\$@"
 EOF
 chmod +x AppDir/AppRun
 
-# --- Create desktop entry ---
+# --- Create desktop entry for inside AppImage ---
 cat > AppDir/usr/share/applications/"$APP_NAME".desktop << EOF
 [Desktop Entry]
 Type=Application
@@ -60,14 +66,11 @@ Icon=$APP_NAME
 Categories=Utility;
 Terminal=false
 EOF
-
-# Copy .desktop to AppDir root (AppImage requirement)
 cp AppDir/usr/share/applications/"$APP_NAME".desktop AppDir/
 
 # --- Copy icon ---
 if [ -f "$ICON_PATH" ]; then
     cp "$ICON_PATH" AppDir/usr/share/icons/hicolor/256x256/apps/"$APP_NAME".png
-    # Fix: AppImage expects the icon also at root level
     cp "$ICON_PATH" AppDir/"$APP_NAME".png
 else
     echo "⚠️  Icon not found at $ICON_PATH"
@@ -77,10 +80,53 @@ fi
 echo "🧩 Creating AppImage..."
 appimagetool AppDir "$APP_NAME"-x86_64.AppImage
 
-# --- Final message ---
+# --- Copy AppImage to project folder ---
+mkdir -p "$LOCAL_OUTPUT_DIR"
+cp "$APP_NAME"-x86_64.AppImage "$LOCAL_OUTPUT_DIR/$APP_NAME.AppImage"
+
+# --- Install AppImage system-wide ---
 echo ""
-echo "✅ Done!"
-echo "AppImage created: $(pwd)/$APP_NAME-x86_64.AppImage"
+echo "📦 Installing AppImage to $INSTALL_DIR ..."
+sudo mkdir -p "$INSTALL_DIR"
+sudo cp "$APP_NAME"-x86_64.AppImage "$INSTALL_DIR/$APP_NAME.AppImage"
+sudo cp "$ICON_PATH" "$INSTALL_DIR/$APP_NAME.png"
+
+# --- Install Icon ---
+if [ -f "$ICON_PATH" ]; then
+    sudo mkdir -p "/usr/share/icons/hicolor/256x256/apps"
+    sudo cp "$ICON_PATH" "/usr/share/icons/hicolor/256x256/apps/$APP_NAME.png"
+fi
+
+# --- Create desktop entry system-wide ---
+echo "🖥️  Creating desktop shortcut..."
+sudo bash -c "cat > $DESKTOP_FILE" << EOF
+[Desktop Entry]
+Type=Application
+Name=$APP_NAME
+Exec=$INSTALL_DIR/$APP_NAME.AppImage
+Icon=$INSTALL_DIR/$APP_NAME.png
+Categories=Utility;
+Terminal=false
+StartupNotify=true
+EOF
+
+# --- Symlink for CLI access ---
+echo "🔗 Creating symlink..."
+sudo ln -sf "$INSTALL_DIR/$APP_NAME.AppImage" "/usr/local/bin/$APP_NAME"
+
+# --- Refresh desktop database ---
+sudo update-desktop-database &>/dev/null || true
+
+# --- Final cleanup ---
+echo "🧹 Cleaning up build directories..."
+rm -rf dist build AppDir *.spec 2>/dev/null || true
+
 echo ""
-echo "👉 Run it with:"
-echo "   chmod +x $APP_NAME-x86_64.AppImage && ./\$APP_NAME-x86_64.AppImage"
+echo "✅ Installation complete!"
+echo "AppImage copies:"
+echo "  • Local:   $(pwd)/$LOCAL_OUTPUT_DIR/$APP_NAME.AppImage"
+echo "  • System:  $INSTALL_DIR/$APP_NAME.AppImage"
+echo ""
+echo "You can now start $APP_NAME via:"
+echo "  • Application menu / search"
+echo "  • Command line:  $APP_NAME"

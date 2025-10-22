@@ -8,7 +8,7 @@ from core.config import COL_IDX, COL_TYPE
 # =====================================================
 def append_action_row(parent, idx: int, act: dict):
     t = act.get("type", "")
-    time_str = f"{act.get('time', 0.0):.3f}"
+    duration_str = f"{act.get('duration', 0.0):.3f}"
     details = ""
 
     if t in ("move", "drag") and "path" in act:
@@ -31,7 +31,7 @@ def append_action_row(parent, idx: int, act: dict):
     items = [
         QStandardItem(str(idx)),
         QStandardItem(t),
-        QStandardItem(time_str),
+        QStandardItem(duration_str),
         QStandardItem(details),
         QStandardItem(act.get("comment", "")),
     ]
@@ -115,8 +115,8 @@ def insert_node_recursive(parent, insert_row, node):
             if not isinstance(data, dict) or not data.get("type"):
                 return
             
-            details = ", ".join([f"{k}={v}" for k, v in data.items() if k not in ["type", "time"]])
-            time_str = f'{data.get("time", 0.0):.3f}'
+            details = ", ".join([f"{k}={v}" for k, v in data.items() if k not in ["type", "duration"]])
+            time_str = f'{data.get("duration", 0.0):.3f}'
             row_items = [
                 QStandardItem(""),
                 QStandardItem(data.get("type", "")),
