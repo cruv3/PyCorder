@@ -1,4 +1,4 @@
-# 🧠 PyCorder — Smart Macro Recorder & Player
+# PyCorder — Smart Macro Recorder & Player
 
 ![Screenshot](assets/pycorder.png)
 
@@ -6,7 +6,7 @@
 
 ---
 
-## ✨ Features
+## Features
 
 - 🎥 **Record Actions** — Automatically capture mouse and keyboard input.  
 - ▶️ **Playback System** — Replay recorded macros at custom speed or from any point.  
@@ -19,7 +19,12 @@
 
 ---
 
-## 🚀 Installation & Release
+## Installation & Release
 
 You can download ready-to-use binaries from the Releases section:  
 [→ Go to Releases](https://github.com/cruv3/PyCorder/releases)
+
+
+## LICENSE
+
+This program is licensed under the [GNU General Public License v3.0](LICENSE).
